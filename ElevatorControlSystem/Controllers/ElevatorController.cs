@@ -1,57 +1,68 @@
 using ElevatorControlSystem.Interfaces;
 using ElevatorControlSystem.Implementations;
+using ElevatorControlSystem.Shared.Enums;
 
 namespace ElevatorControlSystem.Controllers
 {
-    public class ElevatorController
+    public class ElevatorController : IElevatorController
     {
-        private List<IElevator> _elevators = new List<IElevator>();
-        private Random _rand = new Random();
+        private readonly List<IElevator> _elevators;
+        private readonly List<IPassengerRequest> _requests;
+        private static readonly Random Random = new Random();
 
-        public ElevatorController(int numberOfElevators)
-        {            
-            for (int i = 1; i <= numberOfElevators; i++) 
-            {
-                _elevators.Add(new Elevator(i));
-            }
+        public ElevatorController()
+        {
+            _elevators = Enumerable.Range(1, 4).Select(id => new Elevator(id) as IElevator).ToList();
+            _requests = new List<IPassengerRequest>();
         }
 
-        public void RequestElevator(int floor)
+        public void AddRequest(IPassengerRequest request)
         {
-            Console.WriteLine($"Request received from floor {floor}.");
-            var nearestElevator = _elevators.OrderBy(e => Math.Abs(e.CurrentFloor - floor)).First();
-            nearestElevator.AddRequest(floor);
-            _ = nearestElevator.ProcessRequestsAsync(); // Fire and forget
+            _requests.Add(request);
+            Console.WriteLine($"Request added: StartFloor {request.StartFloor}, EndFloor {request.EndFloor}, Direction {request.Direction}");
+            ProcessRequests();
         }
 
-        public async Task SimulateAsync() 
+        private void ProcessRequests()
         {
-            // Generate random calls for elevator system
-            for (int i = 0; i < 20; i++)
+            // Process each request in the queue
+            while (_requests.Any())
             {
-                int floor = _rand.Next(1, 11);
-                IElevator elevator = _elevators[_rand.Next(_elevators.Count)];
-                elevator.AddRequest(floor);
-                
-                // Log the received call
-                if (floor > elevator.CurrentFloor) {
-                    Console.WriteLine($"Request added: Elevator {elevator.Id} has an 'up' call to floor {floor}.");
-                } else if (floor < elevator.CurrentFloor) {
-                    Console.WriteLine($"Request added: Elevator {elevator.Id} has a 'down' call to floor {floor}.");
-                } else {
-                    Console.WriteLine($"Request added: Elevator {elevator.Id} already on floor {floor}.");
+                var request = _requests.First();
+                var bestElevator = GetBestElevatorForRequest(request);
+
+                if (bestElevator != null)
+                {
+                    // Move the elevator to the start floor
+                    bestElevator.MoveToFloor(request.StartFloor);
+                    // Then move to the end floor
+                    bestElevator.MoveToFloor(request.EndFloor);
+                    // Remove the request from the queue
+                    _requests.Remove(request);
                 }
             }
-            
-            // Process requests asynchronously
-            var tasks = _elevators.Select(elevator => elevator.ProcessRequestsAsync()).ToList();
-            await Task.WhenAll(tasks);
-
-            // Display final positions of elevators
-            foreach(var elevator in _elevators)
-            {
-                Console.WriteLine($"Elevator {elevator.Id} is at floor {elevator.CurrentFloor}.");
-            }
         }
+
+        private IElevator GetBestElevatorForRequest(IPassengerRequest request)
+        {
+            // Find elevators that are either idle or moving in the correct direction
+            var availableElevators = _elevators
+                .Where(e => e.IsIdle ||
+                            (e.Direction == request.Direction &&
+                             (e.CurrentFloor < request.StartFloor && e.Direction == ElevatorDirection.Up ||
+                              e.CurrentFloor > request.StartFloor && e.Direction == ElevatorDirection.Down)));
+
+            // If no available elevators are found, select the nearest one regardless of its current state
+            if (!availableElevators.Any())
+            {
+                availableElevators = _elevators;
+            }
+
+            return availableElevators
+                .OrderBy(e => Math.Abs(e.CurrentFloor - request.StartFloor)) // Nearest elevator
+                .FirstOrDefault();
+        }
+
+        public IEnumerable<IElevator> GetElevators() => _elevators;
     }
 }

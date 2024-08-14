@@ -1,67 +1,41 @@
-using ElevatorControlSystem.Interfaces;
+﻿using ElevatorControlSystem.Interfaces;
+using ElevatorControlSystem.Shared.Enums;
 
 namespace ElevatorControlSystem.Implementations
 {
     public class Elevator : IElevator
     {
         public int Id { get; private set; }
-        public int CurrentFloor { get; private set; }
-        public List<int> Calls { get; private set; } = new List<int>();
+        public int CurrentFloor { get; set; }
+        public ElevatorDirection? Direction { get; private set; }
+        public bool IsIdle => Direction == null;
 
         public Elevator(int id)
         {
             Id = id;
-            CurrentFloor = 1; //Assume all elevators start at the first floor
+            CurrentFloor = 1; // Start at floor 1
+            Direction = null; // Idle
         }
 
-        public async Task MoveToFloorAsync(int floor)
+        public void MoveToFloor(int floor)
         {
-            if (CurrentFloor == floor) return;                      
-            int floorsToMove = Math.Abs(CurrentFloor - floor);
-            Console.WriteLine($"Elevator {Id} moving from floor {CurrentFloor} to floor {floor}.");
-            await Task.Delay(floorsToMove * 10000); // Simulate time taken to move between floors
-            CurrentFloor = floor;
-            await Task.Delay(10000); // Simulate time taken for passengers to enter/leave the car.
-        }
-
-        public async Task ProcessRequestsAsync()
-        {
-            while (Calls.Count > 0)
+            if (floor == CurrentFloor)
             {
-                // Process the requests in ascending order
-                Calls.Sort();
-                int currentFloor = CurrentFloor;
-                bool goingUp = Calls[0] > currentFloor;
-
-                foreach(var request in Calls.ToList())
-                {
-                    if((goingUp && request < currentFloor) || (!goingUp && request > currentFloor))
-                    {
-                        continue; // Skip requests that are in the opposite direction
-                    }
-
-                    // Log the request direction
-                    if (request > currentFloor)
-                    {
-                        Console.WriteLine($"Elevator {Id} moving up to floor {request}.");
-                    }
-                    else if (request < currentFloor)
-                    {
-                        Console.WriteLine($"Elevator {Id} moving down to floor {request}.");
-                    }
-
-                    await MoveToFloorAsync(request);
-                    Calls.Remove(request);
-                }
+                Console.WriteLine($"Elevator {Id} is already at Floor {CurrentFloor}.");
+                return;
             }
-        }
 
-        public void AddRequest(int floor)
-        {
-            if(!Calls.Contains(floor))
-            {
-                Calls.Add(floor);
-            }   
+            Direction = floor > CurrentFloor ? ElevatorDirection.Up : ElevatorDirection.Down;
+
+            // Simulate elevator movement
+            Console.WriteLine($"Elevator {Id} moving from Floor {CurrentFloor} to Floor {floor}.");
+            Task.Delay(2000).Wait(); // Simulate time delay for moving
+
+            CurrentFloor = floor;
+
+            Console.WriteLine($"Elevator {Id} reached Floor {CurrentFloor}.");
+            // After reaching the target floor, check if there's more work
+            Direction = null; // Assume it's idle until a new request comes
         }
     }
 }

@@ -7,12 +7,10 @@ using System.Threading.Tasks;
 
 namespace ElevatorControlSystem.Interfaces
 {
-    public interface IElevator
+    public interface IPassengerRequest
     {
-        int Id { get; }
-        int CurrentFloor { get; }
-        ElevatorDirection? Direction { get; }
-        bool IsIdle { get; }
-        void MoveToFloor(int floor);
+        int StartFloor { get; }
+        int EndFloor { get; }
+        ElevatorDirection Direction { get; }
     }
 }

@@ -1,7 +1,30 @@
 ﻿using ElevatorControlSystem.Controllers;
-// See https://aka.ms/new-console-template for more information
+using ElevatorControlSystem.Implementations;
 
-var elevatorControlSystem = new ElevatorController(4);
-await elevatorControlSystem.SimulateAsync();                                                    
+Random Random = new Random();
 
-Console.ReadKey();
+var elevatorController = new ElevatorController();
+var reportGenerator = new ReportGenerator();
+
+// Add some random passenger requests
+for (int i = 0; i < 20; i++) // Increase the number of requests
+{
+    int startFloor = Random.Next(1, 11);
+    int endFloor = Random.Next(1, 11);
+    if (startFloor != endFloor)
+    {
+        elevatorController.AddRequest(new PassengerRequest(startFloor, endFloor));
+    }
+}
+
+Task.Run(async () =>
+{
+    while (true)
+    {
+        reportGenerator.GenerateReport(elevatorController.GetElevators());
+        await Task.Delay(10000); // Report every 10 seconds
+    }
+});
+
+Console.WriteLine("Elevator system is running. Press Enter to exit.");
+Console.ReadLine();
